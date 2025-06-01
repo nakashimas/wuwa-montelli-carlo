@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Overflowing Palette</title>
+  </head>
+  <body class="h-screen">
+    <main id="app" class="min-h-screen flex items-center justify-center">
+      <div>
+        <div
+          class="flex flex-col lg:flex-row space-y-3 lg:space-y-0 lg:space-x-3"
+        >
+          {{/* 本体 */}}
+          <div class="flex items-stretch">
+            <div
+              class="w-12"
+              style="
+                background-image: url('img/gridframel.png');
+                background-repeat: no-repeat;
+                background-size: cover;
+                background-size: 100% 100%;
+                transform: translateX(0.375rem);
+                z-index: -1;
+              "
+            ></div>
+            <div class="rounded-md p-1" style="background-color: #873721">
+              <div class="rounded-md" style="background-color: #070705">
+                <div
+                  class="grid gap-1 p-1 h-full"
+                  :class="['grid-cols-' + cols]"
+                >
+                  <template v-for="(row, rowIndex) in grid">
+                    <template v-for="(cell, colIndex) in row">
+                      <div
+                        :key="`${rowIndex}-${colIndex}`"
+                        :key="colIndex"
+                        class="w-10 h-10 rounded"
+                        :style="{ backgroundColor: colors[cell - 1] || ignoreColor }"
+                        @click="editMode ? updateCellColor(rowIndex, colIndex) : floodFill(rowIndex, colIndex)"
+                      ></div></template
+                  ></template>
+                </div>
+              </div>
+            </div>
+          </div>
+          {{/* 色選択ペイン */}}
+          <div
+            class="flex flex-row lg:flex-col space-x-3 lg:space-x-0 lg:space-y-3 p-4"
+          >
+            <template v-for="(color, colorIndex) in colors">
+              <button
+                :key="colorIndex"
+                class="w-12 h-12 rounded-full border-2"
+                :class="[(colorIndex + 1) == selectedColor ? 'border-[#070705]' : 'border-[#ffffff]']"
+                :style="{backgroundColor: color}"
+                @click="selectedColor = colorIndex + 1"
+              ></button
+            ></template>
+            <button
+              class="w-12 h-12 rounded-full border-2 inline-flex items-center text-center justify-center text-white border-white bg-[#070705]"
+              @click="resetGrid"
+            >
+              <span class="material-icons"> cached </span>
+            </button>
+          </div>
+        </div>
+        <div class="mt-4">
+          <label class="inline-flex items-center cursor-pointer">
+            <input type="checkbox" v-model="editMode" class="sr-only peer" />
+            <div
+              class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600 dark:peer-checked:bg-blue-600"
+            ></div>
+            <span
+              class="ms-3 text-sm font-medium text-gray-900 dark:text-gray-300"
+              >Edit Mode</span
+            >
+          </label>
+        </div>
+      </div>
+      </div>
+    </main>
+
+    <script>
+      const { createApp } = Vue;
+
+      createApp({
+        data() {
+          return {
+            rows: 8,
+            cols: 10,
+            colorCount: 4,
+            ignoreColor: "#3c3b41",
+            colors: ["#729ad2", "#ba4c4c", "#e3ca80", "#59a48e"], // Define 4 colors
+            grid: [],
+            initialGrid: [],
+            selectedColor: 1,
+            editMode: false, // Edit mode toggle
+          };
+        },
+        mounted() {
+          this.initializeGrid();
+        },
+        methods: {
+          initializeGrid() {
+            // Randomly populate the grid with colors
+            this.grid = Array.from({ length: this.rows }, () =>
+              Array.from(
+                { length: this.cols },
+                () => Math.floor(Math.random() * this.colorCount) + 1
+              )
+            );
+            this.initialGrid = JSON.parse(JSON.stringify(this.grid));
+          },
+          resetGrid() {
+            this.grid = JSON.parse(JSON.stringify(this.initialGrid));
+          },
+          selectColor(color) {
+            this.selectedColor = color;
+          },
+          floodFill(row, col) {
+            const targetColor = this.grid[row][col];
+            if (targetColor === this.selectedColor) return;
+
+            const fill = (r, c) => {
+              if (
+                r < 0 ||
+                r >= this.rows ||
+                c < 0 ||
+                c >= this.cols ||
+                this.grid[r][c] !== targetColor
+              ) {
+                return;
+              }
+              this.grid[r][c] = this.selectedColor;
+              fill(r - 1, c);
+              fill(r + 1, c);
+              fill(r, c - 1);
+              fill(r, c + 1);
+            };
+
+            fill(row, col);
+          },
+          updateCellColor(row, col) {
+            this.grid[row][col] = this.selectedColor;
+            this.initialGrid[row][col] = this.selectedColor;
+          },
+        },
+      }).mount("#app");
+    </script>
+  </body>
+</html>
