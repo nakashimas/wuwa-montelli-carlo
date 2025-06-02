@@ -18,9 +18,9 @@
           class="flex flex-col lg:flex-row space-y-3 lg:space-y-0 lg:space-x-3"
         >
           {{/* 本体 */}}
-          <div class="flex items-stretch">
+          <div class="flex items-stretch items-center justify-center">
             <div
-              class="w-12"
+              class="w-8 lg:w-12"
               style="
                 background-image: url('img/gridframel.png');
                 background-repeat: no-repeat;
@@ -30,7 +30,7 @@
                 z-index: -1;
               "
             ></div>
-            <div class="rounded-md p-1" style="background-color: #873721">
+            <div class="rounded-md p-1" style="background-color: #873721; width: 75dvh; max-width: 75dvw">
               <div class="rounded-md" style="background-color: #070705">
                 <div
                   class="grid gap-1 p-1 h-full"
@@ -40,12 +40,21 @@
                     <template v-for="(cell, colIndex) in row">
                       <div
                         :key="`${rowIndex}-${colIndex}`"
-                        :key="colIndex"
-                        class="w-10 h-10 rounded"
+                        class="aspect-square rounded flex items-center justify-center font-bold overflow-hidden"
                         :style="{ backgroundColor: colors[cell - 1] || ignoreColor }"
                         @click="editMode ? updateCellColor(rowIndex, colIndex) : floodFill(rowIndex, colIndex)"
-                      ></div></template
-                  ></template>
+                      >
+                        <template v-for="(step, stepIndex) in simulationSteps">
+                          <span
+                                  v-if="rowIndex === step.row && colIndex === step.col" 
+                                  :key="stepIndex"
+                                  :class="['text-[' + colors[step.color - 1] + ']']">
+                              {{ stepIndex + 1 }}
+                          </span>
+                        </template>
+                      </div>
+                    </template>
+                  </template>
                 </div>
               </div>
             </div>
@@ -71,7 +80,7 @@
             </button>
           </div>
         </div>
-        <div class="mt-4">
+        <div class="mt-4 px-4">
           <label class="inline-flex items-center cursor-pointer">
             <input type="checkbox" v-model="editMode" class="sr-only peer" />
             <div
@@ -82,6 +91,14 @@
               >Edit Mode</span
             >
           </label>
+        </div>
+        <div class="mt-4 px-4">
+          <button
+            class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+            @click="findSimulationSolution"
+          >
+            Run Monte Carlo
+          </button>
         </div>
       </div>
       </div>
@@ -102,6 +119,7 @@
             initialGrid: [],
             selectedColor: 1,
             editMode: false, // Edit mode toggle
+            simulationSteps: [],
           };
         },
         mounted() {
@@ -121,35 +139,118 @@
           resetGrid() {
             this.grid = JSON.parse(JSON.stringify(this.initialGrid));
           },
-          selectColor(color) {
-            this.selectedColor = color;
-          },
           floodFill(row, col) {
             const targetColor = this.grid[row][col];
             if (targetColor === this.selectedColor) return;
 
-            const fill = (r, c) => {
+            const visited = Array.from({ length: this.rows }, () =>
+              Array(this.cols).fill(false)
+            );
+            const directions = [
+              [-1, 0],
+              [1, 0],
+              [0, -1],
+              [0, 1],
+            ];
+            const stack = [[row, col]];
+
+            while (stack.length > 0) {
+              const [r, c] = stack.pop();
               if (
                 r < 0 ||
                 r >= this.rows ||
                 c < 0 ||
                 c >= this.cols ||
+                visited[r][c] ||
                 this.grid[r][c] !== targetColor
               ) {
-                return;
+                continue;
               }
-              this.grid[r][c] = this.selectedColor;
-              fill(r - 1, c);
-              fill(r + 1, c);
-              fill(r, c - 1);
-              fill(r, c + 1);
-            };
 
-            fill(row, col);
+              visited[r][c] = true;
+              this.grid[r][c] = this.selectedColor;
+
+              for (const [dr, dc] of directions) {
+                stack.push([r + dr, c + dc]);
+              }
+            }
           },
           updateCellColor(row, col) {
             this.grid[row][col] = this.selectedColor;
             this.initialGrid[row][col] = this.selectedColor;
+          },
+          simulateFloodFill(row, col, gridCopy, selectedColor) {
+            const targetColor = gridCopy[row][col];
+            if (targetColor === selectedColor) return [];
+
+            const visited = Array.from({ length: this.rows }, () =>
+              Array(this.cols).fill(false)
+            );
+            const directions = [
+              [-1, 0],
+              [1, 0],
+              [0, -1],
+              [0, 1],
+            ];
+            const region = [];
+            const stack = [[row, col]];
+
+            while (stack.length > 0) {
+              const [r, c] = stack.pop();
+              if (
+                r < 0 ||
+                r >= this.rows ||
+                c < 0 ||
+                c >= this.cols ||
+                visited[r][c] ||
+                gridCopy[r][c] !== targetColor
+              ) {
+                continue;
+              }
+
+              visited[r][c] = true;
+              region.push([r, c]);
+
+              for (const [dr, dc] of directions) {
+                stack.push([r + dr, c + dc]);
+              }
+            }
+
+            for (const [r, c] of region) {
+              gridCopy[r][c] = selectedColor;
+            }
+
+            return region;
+          },
+          findSimulationSolution() {
+            const simulatedGrid = JSON.parse(JSON.stringify(this.grid));
+            const targetColor = 1; // Always fill with the first color
+            this.simulationSteps = [];
+
+            for (let row = 0; row < this.rows; row++) {
+              for (let col = 0; col < this.cols; col++) {
+                if (simulatedGrid[row][col] !== targetColor) {
+                  // Try intermediate colors
+                  for (let color = 1; color <= this.colorCount; color++) {
+                    if (color === targetColor) continue;
+
+                    const steps = this.simulateFloodFill(row, col, simulatedGrid, color);
+                    if (steps.length > 0) {
+                      this.simulationSteps.push({ row, col, color });
+                    }
+                  }
+
+                  // Final target color
+                  const steps = this.simulateFloodFill(row, col, simulatedGrid, targetColor);
+                  if (steps.length > 0) {
+                    this.simulationSteps.push({ row, col, color: targetColor });
+                  }
+                }
+              }
+            }
+
+            console.log("Solution Steps:", this.simulationSteps);
+            return this.simulationSteps;
           },
         },
       }).mount("#app");
