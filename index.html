@@ -48,6 +48,7 @@
                         class="aspect-square rounded flex items-center justify-center font-bold overflow-hidden"
                         :style="{ backgroundColor: colors[cell - 1] || ignoreColor }"
                         @click="editMode ? updateCellColor(rowIndex, colIndex) : floodFill(rowIndex, colIndex)"
+                        @click.right.prevent="selectedColor = cell"
                       >
                         <template v-for="(step, stepIndex) in simulationSteps">
                           <span
