@@ -17,7 +17,7 @@
         <div
           class="flex flex-col lg:flex-row space-y-3 lg:space-y-0 lg:space-x-3"
         >
-          {{/* 本体 */}}
+          <!-- 本体 -->
           <div class="flex items-stretch items-center justify-center">
             <div
               class="w-8 lg:w-12"
@@ -30,26 +30,32 @@
                 z-index: -1;
               "
             ></div>
-            <div class="rounded-md p-1" style="background-color: #873721; width: 75dvh; max-width: 75dvw">
+            <div
+              class="rounded-md p-1"
+              style="background-color: #873721; width: 75dvh; max-width: 75dvw"
+            >
               <div class="rounded-md" style="background-color: #070705">
                 <div
                   class="grid gap-1 p-1 h-full"
                   :class="['grid-cols-' + cols]"
                 >
-                  <template v-for="(row, rowIndex) in grid">
-                    <template v-for="(cell, colIndex) in row">
+                  <template v-for="(row, rowIndex) in grid" :key="rowIndex">
+                    <template
+                      v-for="(cell, colIndex) in row"
+                      :key="`${rowIndex}-${colIndex}`"
+                    >
                       <div
-                        :key="`${rowIndex}-${colIndex}`"
                         class="aspect-square rounded flex items-center justify-center font-bold overflow-hidden"
                         :style="{ backgroundColor: colors[cell - 1] || ignoreColor }"
                         @click="editMode ? updateCellColor(rowIndex, colIndex) : floodFill(rowIndex, colIndex)"
                       >
                         <template v-for="(step, stepIndex) in simulationSteps">
                           <span
-                                  v-if="rowIndex === step.row && colIndex === step.col" 
-                                  :key="stepIndex"
-                                  :class="['text-[' + colors[step.color - 1] + ']']">
-                              {{ stepIndex + 1 }}
+                            v-if="rowIndex === step.r && colIndex === step.c"
+                            :key="stepIndex"
+                            :class="['text-[' + colors[step.color - 1] + ']']"
+                          >
+                            {{ stepIndex + 1 }}
                           </span>
                         </template>
                       </div>
@@ -59,19 +65,20 @@
               </div>
             </div>
           </div>
-          {{/* 色選択ペイン */}}
+          <!-- 色選択ペイン -->
           <div
             class="flex flex-row lg:flex-col space-x-3 lg:space-x-0 lg:space-y-3 p-4"
           >
-            <template v-for="(color, colorIndex) in colors">
+            <template v-for="(color, colorIndex) in colors" :key="colorIndex">
               <button
-                :key="colorIndex"
                 class="w-12 h-12 rounded-full border-2"
                 :class="[(colorIndex + 1) == selectedColor ? 'border-[#070705]' : 'border-[#ffffff]']"
                 :style="{backgroundColor: color}"
                 @click="selectedColor = colorIndex + 1"
-              ></button
-            ></template>
+              >
+                <span></span>
+              </button>
+            </template>
             <button
               class="w-12 h-12 rounded-full border-2 inline-flex items-center text-center justify-center text-white border-white bg-[#070705]"
               @click="resetGrid"
@@ -80,6 +87,7 @@
             </button>
           </div>
         </div>
+        <!-- その他操作ペイン -->
         <div class="mt-4 px-4">
           <label class="inline-flex items-center cursor-pointer">
             <input type="checkbox" v-model="editMode" class="sr-only peer" />
@@ -100,7 +108,14 @@
             Run Monte Carlo
           </button>
         </div>
-      </div>
+        <div class="mt-4 px-4">
+          <a
+            class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+            href="?grid=%255B%255B2%252C2%252C3%252C2%252C2%252C3%252C2%252C2%252C1%252C2%255D%252C%255B1%252C1%252C3%252C1%252C1%252C3%252C1%252C1%252C1%252C1%255D%252C%255B2%252C2%252C3%252C2%252C2%252C3%252C2%252C2%252C1%252C2%255D%252C%255B1%252C1%252C1%252C1%252C1%252C3%252C1%252C1%252C1%252C1%255D%252C%255B2%252C2%252C3%252C2%252C2%252C3%252C2%252C2%252C1%252C2%255D%252C%255B1%252C1%252C1%252C1%252C1%252C1%252C1%252C1%252C1%252C1%255D%252C%255B2%252C2%252C3%252C2%252C2%252C3%252C2%252C2%252C1%252C2%255D%252C%255B2%252C2%252C3%252C2%252C2%252C3%252C2%252C2%252C1%252C2%255D%255D"
+          >
+            <span>sample set</span>
+          </a>
+        </div>
       </div>
     </main>
 
@@ -115,10 +130,12 @@
             colorCount: 4,
             ignoreColor: "#3c3b41",
             colors: ["#729ad2", "#ba4c4c", "#e3ca80", "#59a48e"], // Define 4 colors
+            targetColor: 1,
             grid: [],
             initialGrid: [],
             selectedColor: 1,
             editMode: false, // Edit mode toggle
+            simulationIterations: 10000,
             simulationSteps: [],
           };
         },
@@ -147,6 +164,20 @@
               )
             );
             this.initialGrid = JSON.parse(JSON.stringify(this.grid));
+          },
+          loadGridFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const gridParam = urlParams.get("grid");
+            if (gridParam) {
+              try {
+                this.initialGrid = JSON.parse(decodeURIComponent(gridParam));
+                this.grid = JSON.parse(JSON.stringify(this.initialGrid));
+              } catch (error) {
+                console.error("Failed to load grid from URL:", error);
+              }
+            } else {
+              this.initializeGrid();
+            }
           },
           resetGrid() {
             this.grid = JSON.parse(JSON.stringify(this.initialGrid));
@@ -235,48 +266,191 @@
             return region;
           },
           findSimulationSolution() {
-            const simulatedGrid = JSON.parse(JSON.stringify(this.grid));
-            const targetColor = 1; // Always fill with the first color
-            this.simulationSteps = [];
+            const iterations = this.simulationIterations;
+            const targetColor = this.targetColor; // 目標色
+            const R = this.rows,
+              C = this.cols; // 盤面の行数と列数
+            const colorSize = this.colors.length;
 
-            for (let row = 0; row < this.rows; row++) {
-              for (let col = 0; col < this.cols; col++) {
-                if (simulatedGrid[row][col] !== targetColor) {
-                  // Try intermediate colors
-                  for (let color = 1; color <= this.colorCount; color++) {
-                    if (color === targetColor) continue;
+            // ノードクラス（木構造の各ノードを表現）
+            class Node {
+              constructor(grid, parent = null, action = null) {
+                this.grid = grid; // ノードの盤面状態
+                this.parent = parent; // 親ノード
+                this.action = action; // このノードに至るアクション
+                this.visits = 0; // 訪問回数
+                this.wins = 0; // 勝利回数
+                this.children = []; // 子ノードリスト
+                this.untried = this._allActions(); // 未試行アクション
+              }
 
-                    const steps = this.simulateFloodFill(row, col, simulatedGrid, color);
-                    if (steps.length > 0) {
-                      this.simulationSteps.push({ row, col, color });
+              // 全可能アクションをリスト化（同じ色のグループをまとめる）
+              _allActions() {
+                const acts = [];
+                const visited = new Set();
+
+                for (let r = 0; r < R; r++) {
+                  for (let c = 0; c < C; c++) {
+                    const key = `${r},${c}`;
+                    if (visited.has(key)) continue;
+
+                    const originalColor = this.grid[r][c];
+                    const stack = [[r, c]];
+                    const group = [];
+
+                    while (stack.length) {
+                      const [x, y] = stack.pop();
+                      const groupKey = `${x},${y}`;
+                      if (
+                        visited.has(groupKey) ||
+                        this.grid[x][y] !== originalColor
+                      )
+                        continue;
+
+                      visited.add(groupKey);
+                      group.push([x, y]);
+
+                      for (const [dx, dy] of [
+                        [1, 0],
+                        [-1, 0],
+                        [0, 1],
+                        [0, -1],
+                      ]) {
+                        const nx = x + dx,
+                          ny = y + dy;
+                        if (nx >= 0 && nx < R && ny >= 0 && ny < C) {
+                          stack.push([nx, ny]);
+                        }
+                      }
+                    }
+
+                    // グループの代表点に基づき可能アクションを追加
+                    const [gr, gc] = group[0];
+                    for (let color = 1; color <= colorSize; color++) {
+                      // this.colors を使用
+                      if (originalColor !== color)
+                        acts.push({ r: gr, c: gc, color });
                     }
                   }
-
-                  // Final target color
-                  const steps = this.simulateFloodFill(row, col, simulatedGrid, targetColor);
-                  if (steps.length > 0) {
-                    this.simulationSteps.push({ row, col, color: targetColor });
-                  }
                 }
+                return acts;
+              }
+
+              // 全アクション試行済みか判定
+              isFullyExpanded() {
+                return this.untried.length === 0;
+              }
+
+              // 最良の子ノードを選択（UCT値最大）
+              bestChild(cParam = Math.sqrt(2)) {
+                return this.children.reduce(
+                  (best, ch) => {
+                    const uct =
+                      ch.wins / ch.visits +
+                      cParam * Math.sqrt(Math.log(this.visits) / ch.visits);
+                    return uct > best.uct ? { node: ch, uct } : best;
+                  },
+                  { node: null, uct: -Infinity }
+                ).node;
               }
             }
 
-            console.log("Solution Steps:", this.simulationSteps);
-            return this.simulationSteps;
-          },
-          loadGridFromURL() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const gridParam = urlParams.get("grid");
-            if (gridParam) {
-              try {
-                this.initialGrid = JSON.parse(decodeURIComponent(gridParam));
-                this.grid = JSON.parse(JSON.stringify(this.initialGrid));
-              } catch (error) {
-                console.error("Failed to load grid from URL:", error);
+            // flood fill 実装
+            const flood = (grid, { r, c, color }) => {
+              const g2 = grid.map((r) => r.slice());
+              const orig = g2[r][c];
+              if (orig === color) return g2; // 同じ色の場合は処理不要
+              const stack = [[r, c]];
+              while (stack.length) {
+                const [x, y] = stack.pop();
+                if (g2[x][y] !== orig) continue;
+                g2[x][y] = color;
+                for (const [dx, dy] of [
+                  [1, 0],
+                  [-1, 0],
+                  [0, 1],
+                  [0, -1],
+                ]) {
+                  const nx = x + dx,
+                    ny = y + dy;
+                  if (
+                    nx >= 0 &&
+                    nx < R &&
+                    ny >= 0 &&
+                    ny < C &&
+                    g2[nx][ny] === orig
+                  )
+                    stack.push([nx, ny]);
+                }
               }
-            } else {
-              this.initializeGrid();
-            } 
+              return g2;
+            };
+
+            // 評価関数：ターゲット色セル数
+            const score = (grid) =>
+              grid.flat().filter((v) => v === targetColor).length;
+
+            // MCTS 本体
+            const root = new Node(this.initialGrid);
+            for (let it = 0; it < iterations; it++) {
+              // 1) Selection: 最も有望なノードを選択
+              let node = root;
+              while (!node.untried.length && node.children.length) {
+                node = node.bestChild();
+              }
+
+              // 2) Expansion: 未試行アクションを展開
+              if (node.untried.length) {
+                const act = node.untried.splice(
+                  Math.floor(Math.random() * node.untried.length),
+                  1
+                )[0];
+                const ng = flood(node.grid, act);
+                const child = new Node(ng, node, act);
+                node.children.push(child);
+                node = child;
+              }
+
+              // 3) Simulation (rollout): ランダムプレイアウト
+              let simGrid = node.grid;
+              for (let depth = 0; depth < 5; depth++) {
+                const possible = [];
+                for (let r = 0; r < R; r++) {
+                  for (let c = 0; c < C; c++) {
+                    for (let color = 1; color <= colorSize; color++) {
+                      // this.colors を使用
+                      if (simGrid[r][c] !== color)
+                        possible.push({ r, c, color });
+                    }
+                  }
+                }
+                if (!possible.length) break;
+                const a = possible[Math.floor(Math.random() * possible.length)];
+                simGrid = flood(simGrid, a);
+              }
+              const reward = score(simGrid);
+
+              // 4) Backpropagation: 結果を逆伝播
+              let cur = node;
+              while (cur) {
+                cur.visits++;
+                cur.wins += reward;
+                cur = cur.parent;
+              }
+            }
+
+            // 最良手列を抽出
+            const solution = [];
+            let cur = root;
+            while (cur.children.length) {
+              // visit率最大の子を選ぶ
+              cur = cur.children.reduce((a, b) =>
+                a.visits > b.visits ? a : b
+              );
+              solution.push(cur.action);
+            }
+            console.log("MCTS 解:", solution);
+            this.simulationSteps = solution;
           },
         },
       }).mount("#app");
