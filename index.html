@@ -223,49 +223,6 @@
             this.grid[row][col] = this.selectedColor;
             this.initialGrid[row][col] = this.selectedColor;
           },
-          simulateFloodFill(row, col, gridCopy, selectedColor) {
-            const targetColor = gridCopy[row][col];
-            if (targetColor === selectedColor) return [];
-
-            const visited = Array.from({ length: this.rows }, () =>
-              Array(this.cols).fill(false)
-            );
-            const directions = [
-              [-1, 0],
-              [1, 0],
-              [0, -1],
-              [0, 1],
-            ];
-            const region = [];
-            const stack = [[row, col]];
-
-            while (stack.length > 0) {
-              const [r, c] = stack.pop();
-              if (
-                r < 0 ||
-                r >= this.rows ||
-                c < 0 ||
-                c >= this.cols ||
-                visited[r][c] ||
-                gridCopy[r][c] !== targetColor
-              ) {
-                continue;
-              }
-
-              visited[r][c] = true;
-              region.push([r, c]);
-
-              for (const [dr, dc] of directions) {
-                stack.push([r + dr, c + dc]);
-              }
-            }
-
-            for (const [r, c] of region) {
-              gridCopy[r][c] = selectedColor;
-            }
-
-            return region;
-          },
           findSimulationSolution() {
             const iterations = this.simulationIterations;
             const targetColor = this.targetColor; // 目標色
@@ -388,8 +345,48 @@
             };
 
             // 評価関数：ターゲット色セル数
-            const score = (grid) =>
-              grid.flat().filter((v) => v === targetColor).length;
+            const score = (grid) => {
+              const visited = new Set();
+              let totalScore = 0;
+
+              for (let r = 0; r < R; r++) {
+                for (let c = 0; c < C; c++) {
+                  const key = `${r},${c}`;
+                  if (visited.has(key) || grid[r][c] !== targetColor) continue;
+
+                  const stack = [[r, c]];
+                  let groupSize = 0;
+
+                  while (stack.length) {
+                    const [x, y] = stack.pop();
+                    const groupKey = `${x},${y}`;
+                    if (visited.has(groupKey) || grid[x][y] !== targetColor)
+                      continue;
+
+                    visited.add(groupKey);
+                    groupSize++;
+
+                    for (const [dx, dy] of [
+                      [1, 0],
+                      [-1, 0],
+                      [0, 1],
+                      [0, -1],
+                    ]) {
+                      const nx = x + dx,
+                        ny = y + dy;
+                      if (nx >= 0 && nx < R && ny >= 0 && ny < C) {
+                        stack.push([nx, ny]);
+                      }
+                    }
+                  }
+
+                  // グループサイズをスコアに反映
+                  totalScore += groupSize * groupSize; // 例: 面積の二乗でスコア付け
+                }
+              }
+
+              return totalScore;
+            };
 
             // MCTS 本体
             const root = new Node(this.initialGrid);
