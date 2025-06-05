@@ -347,21 +347,23 @@
             // 評価関数：ターゲット色セル数
             const score = (grid) => {
               const visited = new Set();
-              let totalScore = 0;
+              let groupCount = 0;
+              let targetColorCount = 0;
+              let nonTargetGroupSize = 0;
 
               for (let r = 0; r < R; r++) {
                 for (let c = 0; c < C; c++) {
                   const key = `${r},${c}`;
-                  if (visited.has(key) || grid[r][c] !== targetColor) continue;
+                  if (visited.has(key)) continue;
 
+                  const color = grid[r][c];
                   const stack = [[r, c]];
                   let groupSize = 0;
 
                   while (stack.length) {
                     const [x, y] = stack.pop();
                     const groupKey = `${x},${y}`;
-                    if (visited.has(groupKey) || grid[x][y] !== targetColor)
-                      continue;
+                    if (visited.has(groupKey) || grid[x][y] !== color) continue;
 
                     visited.add(groupKey);
                     groupSize++;
@@ -380,16 +382,34 @@
                     }
                   }
 
-                  // グループサイズをスコアに反映
-                  totalScore += groupSize * groupSize; // 例: 面積の二乗でスコア付け
+                  groupCount++; // グループが1つ見つかったのでカウントを増やす
+
+                  if (color === targetColor) {
+                    // 目標色セルのカウント
+                    targetColorCount += groupSize;
+                  } else {
+                    // 目標色以外のグループのサイズを累積
+                    nonTargetGroupSize += groupSize;
+                  }
                 }
               }
 
-              return totalScore;
+              // 評価の重み付け
+              const maxCells = R * C; // 全セル数
+              const targetColorScore = targetColorCount / maxCells; // 目標色の割合
+              const groupScore = -groupCount / maxCells; // グループ数が少ないほど高評価（負のスコア）
+              const nonTargetGroupScore = nonTargetGroupSize / maxCells; // 目標色以外のグループがまとまるほど高評価
+
+              // 総合スコアを計算（重み調整可能）
+              return (
+                0.1 * targetColorScore +
+                0.4 * nonTargetGroupScore +
+                0.4 * groupScore
+              );
             };
 
             // MCTS 本体
-            const root = new Node(this.initialGrid);
+            const root = new Node(this.grid);
             for (let it = 0; it < iterations; it++) {
               // 1) Selection: 最も有望なノードを選択
               let node = root;
