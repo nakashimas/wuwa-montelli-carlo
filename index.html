@@ -14,6 +14,23 @@
   <body class="h-screen">
     <main id="app" class="min-h-screen flex items-center justify-center">
       <div>
+        <div class="flex flex-col md:flex-row justify-between p-4">
+          <h1
+            class="text-lg font-bold text-[#873721] text-center lg:text-start"
+          >
+            彩魔絵 (Overflowing Palette) シミュ
+          </h1>
+          <label class="inline-flex items-center cursor-pointer">
+            <input type="checkbox" v-model="editMode" class="sr-only peer" />
+            <span
+              class="me-3 text-sm font-medium text-gray-900 dark:text-gray-300"
+              >Edit Mode</span
+            >
+            <div
+              class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600 dark:peer-checked:bg-blue-600"
+            ></div>
+          </label>
+        </div>
         <div
           class="flex flex-col lg:flex-row space-y-3 lg:space-y-0 lg:space-x-3"
         >
@@ -68,20 +85,24 @@
           </div>
           <!-- 色選択ペイン -->
           <div
-            class="flex flex-row lg:flex-col space-x-3 lg:space-x-0 lg:space-y-3 p-4"
+            class="flex flex-row lg:flex-col space-x-3 lg:space-x-0 lg:space-y-3 p-4 justify-center lg:justify-start"
           >
             <template v-for="(color, colorIndex) in colors" :key="colorIndex">
               <button
-                class="w-12 h-12 rounded-full border-2"
+                class="w-8 h-8 md:w-12 md:h-12 rounded-full border-2"
                 :class="[(colorIndex + 1) == selectedColor ? 'border-[#070705]' : 'border-[#ffffff]']"
                 :style="{backgroundColor: color}"
                 @click="selectedColor = colorIndex + 1"
               >
+                <div
+                  v-if="(colorIndex + 1) == selectedColor"
+                  class="relative -left-1 md:-left-2 w-2 h-2 md:w-4 md:h-4 rotate-45 bg-[#070705]"
+                ></div>
                 <span></span>
               </button>
             </template>
             <button
-              class="w-12 h-12 rounded-full border-2 inline-flex items-center text-center justify-center text-white border-white bg-[#070705]"
+              class="w-8 h-8 md:w-12 md:h-12 rounded-full border-2 inline-flex items-center text-center justify-center text-white border-white bg-[#070705]"
               @click="resetGrid"
             >
               <span class="material-icons"> cached </span>
@@ -90,36 +111,56 @@
         </div>
         <!-- その他操作ペイン -->
         <div class="mt-4 px-4">
-          <label class="inline-flex items-center cursor-pointer">
-            <input type="checkbox" v-model="editMode" class="sr-only peer" />
-            <div
-              class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600 dark:peer-checked:bg-blue-600"
-            ></div>
-            <span
-              class="ms-3 text-sm font-medium text-gray-900 dark:text-gray-300"
-              >Edit Mode</span
-            >
-          </label>
-        </div>
-        <div class="mt-4 px-4">
-          <button
-            class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+          <div
+            class="flex items-start justify-center space-x-4 cursor-pointer hover:scale-105"
             @click="findSimulationSolution"
           >
-            Run Monte Carlo
-          </button>
+            <!-- キャラクターアイコン -->
+            <img
+              src="./img/montecarlo.png"
+              alt="Character Icon"
+              style="max-width: 4rem; min-width: 1rem"
+            />
+
+            <!-- 吹き出し -->
+            <div
+              class="relative max-w-md bg-red-500 text-white p-4 rounded-xl font-bold"
+            >
+              <p>Monte Carlo Hint</p>
+              <!-- 吹き出しの矢印部分 -->
+              <div
+                class="absolute -left-2 top-3 w-4 h-4 bg-red-500 rotate-45"
+              ></div>
+            </div>
+          </div>
         </div>
-        <div class="mt-4 px-4">
-          <a
-            class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-            href="?grid=%255B%255B2%252C2%252C3%252C2%252C2%252C3%252C2%252C2%252C1%252C2%255D%252C%255B1%252C1%252C3%252C1%252C1%252C3%252C1%252C1%252C1%252C1%255D%252C%255B2%252C2%252C3%252C2%252C2%252C3%252C2%252C2%252C1%252C2%255D%252C%255B1%252C1%252C1%252C1%252C1%252C3%252C1%252C1%252C1%252C1%255D%252C%255B2%252C2%252C3%252C2%252C2%252C3%252C2%252C2%252C1%252C2%255D%252C%255B1%252C1%252C1%252C1%252C1%252C1%252C1%252C1%252C1%252C1%255D%252C%255B2%252C2%252C3%252C2%252C2%252C3%252C2%252C2%252C1%252C2%255D%252C%255B2%252C2%252C3%252C2%252C2%252C3%252C2%252C2%252C1%252C2%255D%255D"
+        <div class="mt-4 h-[50vh] overflow-y-auto px-4">
+          <template
+            v-for="(sample, sampleIndex) in sampleGridUrlList"
+            :key="sampleIndex"
           >
-            <span>sample set</span>
-          </a>
+            <div class="mb-2">
+              <a
+                :class="`flex items-center justify-between font-semibold py-3 px-5 rounded-lg shadow-md transition-all transform 
+  ${sample.url ? 'bg-gray-800 hover:bg-gray-700 text-white hover:scale-105 cursor-pointer' : 'bg-gray-500 text-gray-300 cursor-not-allowed'}`"
+                :href="sample.url || 'javascript:void(0)'"
+                :aria-disabled="!sample.url"
+              >
+                <span>{{ sample.name }}</span>
+                <span
+                  class="material-icons"
+                  :class="sample.url ? 'text-white' : 'text-gray-400'"
+                >
+                  arrow_forward
+                </span>
+              </a>
+            </div>
+          </template>
         </div>
       </div>
     </main>
 
+    <script src="./grid.js"></script>
     <script>
       const { createApp } = Vue;
 
@@ -134,6 +175,7 @@
             targetColor: 1,
             grid: [],
             initialGrid: [],
+            sampleGridUrlList: gridUrlList ?? [],
             selectedColor: 1,
             editMode: false, // Edit mode toggle
             simulationIterations: 10000,
