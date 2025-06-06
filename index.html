@@ -64,9 +64,17 @@
                       <div
                         class="aspect-square rounded flex items-center justify-center font-bold overflow-hidden"
                         :style="{ backgroundColor: colors[cell - 1] || ignoreColor }"
-                        @click="editMode ? updateCellColor(rowIndex, colIndex) : floodFill(rowIndex, colIndex)"
+                        @click="
+                          if (editMode) {
+                            updateCellColor(rowIndex, colIndex);
+                          } else {
+                            if (!(selectedColor == 0 || cell == 0)) floodFill(rowIndex, colIndex);
+                          }"
                         @click.right.prevent="selectedColor = cell"
                       >
+                        <span v-if="(cell == 0)" class="material-icons"
+                          >close</span
+                        >
                         <template v-for="(step, stepIndex) in simulationSteps">
                           <span
                             v-if="rowIndex === step.r && colIndex === step.c"
@@ -101,6 +109,18 @@
                 <span></span>
               </button>
             </template>
+            <!-- 操作不可マス -->
+            <button
+              class="w-8 h-8 md:w-12 md:h-12 rounded-full border-2 bg-[#3c3c3e]"
+              :class="[selectedColor == 0 ? 'border-[#070705]' : 'border-[#ffffff]']"
+              @click="selectedColor = 0"
+            >
+              <div
+                v-if="selectedColor == 0"
+                class="relative -left-1 md:-left-2 w-2 h-2 md:w-4 md:h-4 rotate-45 bg-[#070705]"
+              ></div>
+              <span></span>
+            </button>
             <button
               class="w-8 h-8 md:w-12 md:h-12 rounded-full border-2 inline-flex items-center text-center justify-center text-white border-white bg-[#070705]"
               @click="resetGrid"
@@ -170,7 +190,7 @@
             rows: 8,
             cols: 10,
             colorCount: 4,
-            ignoreColor: "#3c3b41",
+            ignoreColor: "#3c3c3e",
             colors: ["#729ad2", "#ba4c4c", "#e3ca80", "#59a48e"], // Define 4 colors
             targetColor: 1,
             grid: [],
@@ -292,7 +312,7 @@
                 for (let r = 0; r < R; r++) {
                   for (let c = 0; c < C; c++) {
                     const key = `${r},${c}`;
-                    if (visited.has(key)) continue;
+                    if (visited.has(key) || this.grid[r][c] === 0) continue; // 0 を除外
 
                     const originalColor = this.grid[r][c];
                     const stack = [[r, c]];
@@ -303,7 +323,8 @@
                       const groupKey = `${x},${y}`;
                       if (
                         visited.has(groupKey) ||
-                        this.grid[x][y] !== originalColor
+                        this.grid[x][y] !== originalColor ||
+                        this.grid[x][y] === 0
                       )
                         continue;
 
@@ -327,7 +348,6 @@
                     // グループの代表点に基づき可能アクションを追加
                     const [gr, gc] = group[0];
                     for (let color = 1; color <= colorSize; color++) {
-                      // this.colors を使用
                       if (originalColor !== color)
                         acts.push({ r: gr, c: gc, color });
                     }
